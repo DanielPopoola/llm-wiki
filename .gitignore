@@ -1,0 +1,21 @@
+# environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# uv
+.python-version
+
+# Wiki data (not committed — lives on disk locally)
+wikis/
+
+# Eval reports (committed — track scores over time)
+# eval/ is intentionally NOT ignored
+
+# Editor
+.zed/
