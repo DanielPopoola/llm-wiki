@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     oracle_host: str
     oracle_port: int = 1521
-    oracle_pwd: str
+    oracle_password: str
     oracle_user: str = "ADMIN"
     oracle_service: str = "FREEPDB1"
 
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     langsmith_project: str = "llm-wiki"
     langsmith_tracing: bool = True
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore")
 
 
 @lru_cache

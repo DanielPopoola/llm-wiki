@@ -114,7 +114,7 @@ def create_wiki(name: str, wikis_dir: Path) -> WikiSchema:
     for d in WIKI_DIRS:
         (wiki_path / d).mkdir(parents=True)
 
-    (wiki_path / "SCHEMA.md").write_text(SCHEMA_TEMPLATE.format(name=name, create=date.today().isoformat()))
+    (wiki_path / "SCHEMA.md").write_text(SCHEMA_TEMPLATE.format(name=name, created=date.today().isoformat()))
 
     (wiki_path / "index.md").write_text(INDEX_TEMPLATE.format(name=name))
     (wiki_path / "log.md").write_text(LOG_TEMPLATE.format(name=name))
