@@ -1,8 +1,7 @@
-from pathlib import Path
+"""
+All LLM prompts for the wiki agent.
 
-# ---------------------------------------------------------------------------
-# Ingestion prompts
-# ---------------------------------------------------------------------------
+"""
 
 
 def extraction_prompt(source_text: str) -> str:
@@ -142,7 +141,6 @@ def new_topic_page_prompt(
 ) -> str:
     """Node: update_topic_pages — new page"""
     entity_links = ", ".join(f"[[{e}]]" for e in entities)
-    claims_text = "\n".join(f"  - {c}" for c in key_claims)
 
     return f"""\
 Write a topic overview page for "{concept}".
@@ -227,3 +225,24 @@ opposing outcomes. Updated figures across different time periods (Q2 vs Q3) are 
 NOT contradictions.
 
 Return only the structured data requested. No commentary."""
+
+
+# ---------------------------------------------------------------------------
+# Index prompts
+# ---------------------------------------------------------------------------
+
+
+def page_description_prompt(title: str, page_type: str, body: str) -> str:
+    """Node: update_index — one-line description per new/updated page."""
+    return f"""\
+Write a single-line description for this wiki {page_type} page. \
+Maximum 12 words. No punctuation at the end. No quotes.
+
+Page title: {title}
+
+Page content:
+---
+{body[:800]}
+---
+
+Return only the one-line description. Nothing else."""

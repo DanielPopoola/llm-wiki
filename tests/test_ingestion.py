@@ -3,13 +3,6 @@ Tests for workflows/ingestion.py.
 
 All LLM calls are mocked — tests run without any API key or network access.
 Uses tmp_path for filesystem isolation.
-
-Covers (per WIKI-003 definition of done):
-  - Happy path: summary, entity, topic pages created
-  - Contradiction detection: flagged under ## Contradictions
-  - raw/ copy: source unchanged
-  - Stub creation: missing wikilink targets get stubs
-  - Duplicate detection: same source skipped on second ingest
 """
 
 import json

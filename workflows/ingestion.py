@@ -20,13 +20,15 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from config import settings
-from wiki.log import log_backup, log_wrote
+from wiki.index import IndexEntry, read_index, upsert_entries, write_index
+from wiki.log import append_log_md, log_backup, log_completed, log_started, log_wrote
 from wiki.pages import make_frontmatter, read_page, resolve_wikilink, write_page
 from wiki.prompts import (
     contradiction_check_prompt,
     extraction_prompt,
     new_entity_page_prompt,
     new_topic_page_prompt,
+    page_description_prompt,
     summary_page_prompt,
     update_entity_page_prompt,
     update_topic_page_prompt,
@@ -372,6 +374,82 @@ def create_stub_pages(state: IngestionState) -> dict:
     return {"pages_written": written}
 
 
+def update_index(state: IngestionState) -> dict:
+    """
+    Node 9: Rebuild index.md to reflect all pages written this ingestion.
+
+    For each page written, asks the LLM for a one-line description,
+    then upserts the entry. Stale entries (deleted pages) are dropped
+    automatically by write_index().
+    """
+    if state.get("skip"):
+        return {}
+
+    llm = _make_llm()
+    index = read_index(state["wiki_path"])
+    new_entries = []
+
+    for entry in state.get("pages_written", []):
+        page_path = Path(entry["path"])
+        if not page_path.exists():
+            continue
+
+        try:
+            page = read_page(page_path)
+        except (ValueError, KeyError):
+            continue
+
+        response = llm.invoke(
+            page_description_prompt(
+                title=page.frontmatter.title,
+                page_type=page.frontmatter.type,
+                body=page.body,
+            )
+        )
+
+        new_entries.append(
+            IndexEntry(
+                title=page.frontmatter.title,
+                description=response.content.strip(),
+                page_type=page.frontmatter.type,
+                page_path=page_path,
+            )
+        )
+
+    updated_index = upsert_entries(index, new_entries)
+    write_index(updated_index)
+
+    return {}
+
+
+def append_log(state: IngestionState) -> dict:
+    """
+    Node 10: Append a completed entry to log.md and log.ndjson.
+    """
+    if state.get("skip"):
+        return {}
+
+    source_name = Path(state["source_path"]).name
+    pages_count = len(state.get("pages_written", []))
+
+    # Human-readable entry in log.md
+    append_log_md(
+        log_path=state["wiki_path"] / "log.md",
+        event_type="ingest",
+        description=f"COMPLETED | {source_name} — {pages_count} pages written",
+    )
+
+    # Structured completed event in log.ndjson (closes the started event)
+    log_completed(
+        log_path=state["wiki_path"] / "log.ndjson",
+        thread_id=state["thread_id"],
+        source=source_name,
+        pages_written=pages_count,
+    )
+
+    return {}
+
+
 def should_skip(state: IngestionState) -> str:
     return "skip" if state.get("skip") else "continue"
 
@@ -387,6 +465,8 @@ def build_ingestion_graph() -> StateGraph:
     builder.add_node("update_topic_pages", update_topic_pages)
     builder.add_node("flag_contradictions", flag_contradictions)
     builder.add_node("create_stub_pages", create_stub_pages)
+    builder.add_node("update_index", update_index)
+    builder.add_node("append_log", append_log)
 
     builder.add_edge(START, "read_source")
     builder.add_edge("read_source", "hash_source")
@@ -400,7 +480,9 @@ def build_ingestion_graph() -> StateGraph:
     builder.add_edge("update_entity_pages", "update_topic_pages")
     builder.add_edge("update_topic_pages", "flag_contradictions")
     builder.add_edge("flag_contradictions", "create_stub_pages")
-    builder.add_edge("create_stub_pages", END)
+    builder.add_edge("create_stub_pages", "update_index")
+    builder.add_edge("update_index", "append_log")
+    builder.add_edge("append_log", END)
 
     return builder
 
@@ -414,6 +496,13 @@ def run_ingestion(
     Run the ingestion workflow for a single source document.
     """
     thread_id = thread_id or str(uuid.uuid4())
+
+    log_started(
+        log_path=wiki_path / "log.ndjson",
+        thread_id=thread_id,
+        source=str(source_path),
+    )
+
     checkpointer = InMemorySaver()
     graph = build_ingestion_graph().compile(checkpointer=checkpointer)
 
