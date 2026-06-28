@@ -1,7 +1,8 @@
 """
 All LLM prompts for the wiki agent.
-
 """
+
+from pathlib import Path
 
 
 def extraction_prompt(source_text: str) -> str:
@@ -141,6 +142,7 @@ def new_topic_page_prompt(
 ) -> str:
     """Node: update_topic_pages — new page"""
     entity_links = ", ".join(f"[[{e}]]" for e in entities)
+    claims_text = "\n".join(f"  - {c}" for c in key_claims)
 
     return f"""\
 Write a topic overview page for "{concept}".
@@ -246,3 +248,73 @@ Page content:
 ---
 
 Return only the one-line description. Nothing else."""
+
+
+# ---------------------------------------------------------------------------
+# Query prompts
+# ---------------------------------------------------------------------------
+
+
+def query_prompt(
+    question: str,
+    page_contents: list[dict],  # [{"title": ..., "path": ..., "body": ...}]
+    conversation_history: list[dict],
+) -> str:
+    """Node: synthesise_answer — answer a question from retrieved wiki pages."""
+    pages_text = "\n\n".join(f"--- Page: {p['title']} (path: {p['path']}) ---\n{p['body']}" for p in page_contents)
+
+    history_text = ""
+    if conversation_history:
+        history_text = "\nPrevious conversation:\n" + "\n".join(
+            f"{m['role'].capitalize()}: {m['content']}" for m in conversation_history
+        )
+
+    return f"""\
+You are a knowledgeable assistant answering questions from a personal wiki.
+Answer ONLY from the wiki pages provided. Do not use outside knowledge.
+If the pages do not contain enough information, say so honestly.{history_text}
+
+Wiki pages retrieved:
+{pages_text}
+
+Question: {question}
+
+Instructions:
+- Cite specific pages using the format [Page Title] after each claim
+- Choose the best format for the answer: prose, table, or bullet list
+- If this is a comparison question, use a markdown table
+- If the wiki pages do not cover the question, set has_gap to true and
+  explain what is missing rather than speculating
+- Keep the answer focused and concise
+
+Return only the structured data requested. No preamble."""
+
+
+def save_page_prompt(
+    question: str,
+    answer: str,
+    citations: list[str],
+) -> str:
+    """Node: offer_to_save — reformat an answer as a standalone wiki page."""
+    citations_text = "\n".join(f"- [[{c}]]" for c in citations)
+
+    return f"""\
+Convert this Q&A exchange into a standalone wiki page.
+
+Original question: {question}
+
+Answer:
+{answer}
+
+Write a structured markdown page with:
+
+## Overview
+(restate the question as a topic summary in 2-3 sentences)
+
+## Answer
+(the full answer, formatted clearly)
+
+## Sources
+{citations_text}
+
+Write only the page body. No frontmatter. No preamble."""

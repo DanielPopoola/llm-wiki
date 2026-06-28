@@ -10,25 +10,17 @@ Covers WIKI-006 definition of done:
 """
 
 import hashlib
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-from wiki import storage
+from wiki.schema import create_wiki
 from wiki.storage import (
-    PageSearchResult,
     record_source,
-    register_project,
     search_pages,
     source_already_ingested,
     upsert_page,
 )
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+from workflows.ingestion import IngestionState, hash_source
 
 
 def _make_db(fetchone_return=None, fetchall_return=None):
@@ -51,9 +43,17 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-# ---------------------------------------------------------------------------
-# upsert_page
-# ---------------------------------------------------------------------------
+def _make_config(llm=None, db=None) -> dict:
+    return {"configurable": {"thread_id": "test-thread-001", "db": db}}
+
+
+def _state(wiki, source_file) -> IngestionState:
+    return IngestionState(
+        wiki_path=wiki.path,
+        source_path=source_file,
+        thread_id="test-thread-001",
+        project="test",
+    )
 
 
 def test_upsert_page_inserts_new_row():
@@ -249,28 +249,12 @@ def test_search_pages_respects_project_isolation():
 
 
 def test_hash_source_uses_oracle_when_db_injected(tmp_path):
-    from wiki.schema import create_wiki
-    from workflows.ingestion import hash_source
-
     wiki = create_wiki("test", wikis_dir=tmp_path)
     db, cursor = _make_db(fetchone_return=None)  # not already ingested
 
-    state = {
-        "wiki_path": wiki.path,
-        "source_path": tmp_path / "source.md",
-        "project": "test",
-        "db": db,
-        "source_text": "Some source content",
-        "source_hash": "",
-        "skip": False,
-        "thread_id": "t1",
-        "entities": [],
-        "concepts": [],
-        "key_claims": [],
-        "pages_written": [],
-    }
+    state = _state(wiki, tmp_path / "source.md")
 
-    result = hash_source(state)
+    result = hash_source(state, _make_config(db=db))  # type: ignore
 
     assert result["skip"] is False
     # Oracle was consulted — cursor.execute was called
@@ -278,54 +262,22 @@ def test_hash_source_uses_oracle_when_db_injected(tmp_path):
 
 
 def test_hash_source_skips_when_oracle_says_duplicate(tmp_path):
-    from wiki.schema import create_wiki
-    from workflows.ingestion import hash_source
-
     wiki = create_wiki("test", wikis_dir=tmp_path)
     db, cursor = _make_db(fetchone_return=(1,))  # already ingested
 
-    state = {
-        "wiki_path": wiki.path,
-        "source_path": tmp_path / "source.md",
-        "project": "test",
-        "db": db,
-        "source_text": "Some source content",
-        "source_hash": "",
-        "skip": False,
-        "thread_id": "t1",
-        "entities": [],
-        "concepts": [],
-        "key_claims": [],
-        "pages_written": [],
-    }
+    state = _state(wiki, tmp_path / "source.md")
 
-    result = hash_source(state)
+    result = hash_source(state, _make_config(db=db))  # type: ignore
 
     assert result["skip"] is True
 
 
 def test_hash_source_falls_back_to_json_when_no_db(tmp_path):
-    from wiki.schema import create_wiki
-    from workflows.ingestion import hash_source
-
     wiki = create_wiki("test", wikis_dir=tmp_path)
 
-    state = {
-        "wiki_path": wiki.path,
-        "source_path": tmp_path / "source.md",
-        "project": "test",
-        "db": None,  # no DB injected
-        "source_text": "Some source content",
-        "source_hash": "",
-        "skip": False,
-        "thread_id": "t1",
-        "entities": [],
-        "concepts": [],
-        "key_claims": [],
-        "pages_written": [],
-    }
+    state = _state(wiki, tmp_path / "source.md")
 
-    result = hash_source(state)
+    result = hash_source(state, _make_config())  # type: ignore
 
     assert result["skip"] is False
     # Local cache file should have been created
