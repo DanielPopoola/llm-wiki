@@ -11,7 +11,7 @@ import re
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
@@ -20,6 +20,9 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from config import settings
+from infrastructure.db import DatabaseConnection
+from wiki import storage
+from wiki.embeddings import build_embed_input, generate_embedding
 from wiki.index import IndexEntry, read_index, upsert_entries, write_index
 from wiki.log import append_log_md, log_backup, log_completed, log_started, log_wrote
 from wiki.pages import make_frontmatter, read_page, resolve_wikilink, write_page
@@ -61,6 +64,8 @@ class IngestionState(TypedDict):
     wiki_path: Path
     source_path: Path
     thread_id: str
+    project: str  # wiki project name for DB isolation
+    db: Optional[DatabaseConnection]
     source_text: str
     source_hash: str
     skip: bool
@@ -123,11 +128,17 @@ def hash_source(state: IngestionState) -> dict:
     """
     Node 2: Hash the source to detect duplicates.
 
-    Phase 1: local JSON cache. Phase 2 (WIKI-006): Oracle wiki_sources table.
+    Falls back to local JSON cache when db is None (tests / Phase 1).
     """
     digest = hashlib.sha256(state["source_text"].encode()).hexdigest()
-    cache_path = state["wiki_path"] / ".ingested_hashes.json"
+    db = state.get("db")
 
+    if db is not None:
+        already_done = storage.source_already_ingested(db, state["project"], digest)
+        return {"source_hash": digest, "skip": already_done}
+
+    # Fallback: local JSON cache (used when db not injected)
+    cache_path = state["wiki_path"] / ".ingested_hashes.json"
     cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
 
     if digest in cache:
@@ -135,7 +146,6 @@ def hash_source(state: IngestionState) -> dict:
 
     cache[digest] = str(state["source_path"])
     cache_path.write_text(json.dumps(cache, indent=2))
-
     return {"source_hash": digest, "skip": False}
 
 
@@ -450,6 +460,50 @@ def append_log(state: IngestionState) -> dict:
     return {}
 
 
+def embed_changed_pages(state: IngestionState) -> dict:
+    """
+    Node 11: Re-embed only pages touched by this ingestion.
+
+    Reads each written page, generates title + first-400-token embedding,
+    and upserts into wiki_pages. Pages whose content hash hasn't changed
+    are skipped by storage.upsert_page() — no redundant re-embedding.
+
+    Skipped entirely when db is not injected.
+    """
+    if state.get("skip"):
+        return {}
+
+    db = state.get("db")
+    if db is None:
+        return {}
+
+    for entry in state.get("pages_written", []):
+        page_path = Path(entry["path"])
+        if not page_path.exists():
+            continue
+
+        try:
+            page = read_page(page_path)
+        except (ValueError, KeyError):
+            continue
+
+        snippet = build_embed_input(page.frontmatter.title, page.body)
+        embedding = generate_embedding(snippet)
+
+        storage.upsert_page(
+            db=db,
+            project=state["project"],
+            page_path=page_path,
+            title=page.frontmatter.title,
+            page_type=page.frontmatter.type,
+            tags=page.frontmatter.tags,
+            snippet=snippet,
+            embedding=embedding,
+        )
+
+    return {}
+
+
 def should_skip(state: IngestionState) -> str:
     return "skip" if state.get("skip") else "continue"
 
@@ -466,6 +520,7 @@ def build_ingestion_graph() -> StateGraph:
     builder.add_node("flag_contradictions", flag_contradictions)
     builder.add_node("create_stub_pages", create_stub_pages)
     builder.add_node("update_index", update_index)
+    builder.add_node("embed_changed_pages", embed_changed_pages)
     builder.add_node("append_log", append_log)
 
     builder.add_edge(START, "read_source")
@@ -481,7 +536,8 @@ def build_ingestion_graph() -> StateGraph:
     builder.add_edge("update_topic_pages", "flag_contradictions")
     builder.add_edge("flag_contradictions", "create_stub_pages")
     builder.add_edge("create_stub_pages", "update_index")
-    builder.add_edge("update_index", "append_log")
+    builder.add_edge("update_index", "embed_changed_pages")
+    builder.add_edge("embed_changed_pages", "append_log")
     builder.add_edge("append_log", END)
 
     return builder
@@ -490,10 +546,23 @@ def build_ingestion_graph() -> StateGraph:
 def run_ingestion(
     wiki_path: Path,
     source_path: Path,
+    project: str,
+    db: DatabaseConnection | None = None,
     thread_id: str | None = None,
 ) -> IngestionState:
     """
     Run the ingestion workflow for a single source document.
+
+    Args:
+        wiki_path: Root directory of the wiki project.
+        source_path: Path to the source document to ingest.
+        project: Wiki project name — used for DB isolation.
+        db: Injected DatabaseConnection. Pass None to skip all DB writes
+            (useful for tests and Phase 1 mode).
+        thread_id: LangGraph thread ID. Auto-generated if not provided.
+
+    Returns:
+        Final IngestionState after all nodes complete.
     """
     thread_id = thread_id or str(uuid.uuid4())
 
@@ -511,6 +580,8 @@ def run_ingestion(
         "wiki_path": wiki_path,
         "source_path": source_path,
         "thread_id": thread_id,
+        "project": project,
+        "db": db,
         "source_text": "",
         "source_hash": "",
         "skip": False,
