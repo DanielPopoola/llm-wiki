@@ -136,6 +136,8 @@ def source_already_ingested(
     """
     Check whether a source with this hash has already been ingested.
 
+    Replaces the local JSON cache used in Phase 1.
+
     Args:
         db: Injected database connection.
         project: Wiki project name.
@@ -373,3 +375,90 @@ def update_project_stats(
 
 def _hash_text(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
+
+
+@dataclass
+class ProjectInfo:
+    name: str
+    wiki_path: str
+    created_at: str
+    last_ingested: str | None
+    page_count: int
+    source_count: int
+
+
+def get_project(db: DatabaseConnection, name: str) -> ProjectInfo | None:
+    """
+    Fetch a single project's metadata from wiki_projects.
+
+    Returns None if the project doesn't exist — callers decide how to handle.
+    """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT name, wiki_path, created_at, last_ingested,
+                   page_count, source_count
+            FROM wiki_projects
+            WHERE name = :name
+            """,
+            name=name,
+        )
+        row = cursor.fetchone()
+
+    if row is None:
+        return None
+
+    return ProjectInfo(
+        name=row[0],
+        wiki_path=row[1],
+        created_at=str(row[2]),
+        last_ingested=str(row[3]) if row[3] else None,
+        page_count=row[4] or 0,
+        source_count=row[5] or 0,
+    )
+
+
+def list_projects(db: DatabaseConnection) -> list[ProjectInfo]:
+    """
+    Return all projects from wiki_projects ordered by creation date.
+
+    Used by `llm-wiki list` to show project metadata alongside disk info.
+    """
+    with db.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT name, wiki_path, created_at, last_ingested,
+                   page_count, source_count
+            FROM wiki_projects
+            ORDER BY created_at ASC
+            """
+        )
+        rows = cursor.fetchall()
+
+    return [
+        ProjectInfo(
+            name=row[0],
+            wiki_path=row[1],
+            created_at=str(row[2]),
+            last_ingested=str(row[3]) if row[3] else None,
+            page_count=row[4] or 0,
+            source_count=row[5] or 0,
+        )
+        for row in rows
+    ]
+
+
+def select_project(db: DatabaseConnection, name: str) -> ProjectInfo:
+    """
+    Validate a project exists in Oracle before any operation.
+
+    Called internally by CLI commands after reading the selected project
+    from local config. Fails fast with a clear error if not found.
+
+    Raises:
+        ValueError: If the project doesn't exist in wiki_projects.
+    """
+    project = get_project(db, name)
+    if project is None:
+        raise ValueError(f"Project '{name}' not found in database.\nRun: llm-wiki new {name}")
+    return project

@@ -233,9 +233,9 @@ def test_append_log_md_grep_parseable(wiki, tmp_path):
         text=True,
     )
 
-    lines = [l for l in result.stdout.splitlines() if l.strip()]
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
     assert len(lines) == 3
-    assert all(l.startswith("## [") for l in lines)
+    assert all(line.startswith("## [") for line in lines)
 
 
 def test_log_md_entries_are_chronological(wiki):
@@ -262,7 +262,7 @@ def test_log_started_and_completed_bracket_ingestion(wiki):
     log_started(log_path, thread_id, source="gtbank.md")
     log_completed(log_path, thread_id, source="gtbank.md", pages_written=5)
 
-    events = [json.loads(l) for l in log_path.read_text().splitlines() if l.strip()]
+    events = [json.loads(line) for line in log_path.read_text().splitlines() if line.strip()]
     statuses = [e["status"] for e in events]
 
     assert "started" in statuses

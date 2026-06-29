@@ -2,8 +2,6 @@
 All LLM prompts for the wiki agent.
 """
 
-from pathlib import Path
-
 
 def extraction_prompt(source_text: str) -> str:
     """Node: extract_entities_and_concepts"""
@@ -159,6 +157,9 @@ Write a structured markdown page with exactly these sections:
 
 ## Key Entities
 {entity_links}
+
+Relevant claims about {entities}:
+{claims_text}
 
 ## Key Themes
 (bullet list of the main themes and ideas from the source)
