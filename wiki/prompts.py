@@ -319,3 +319,88 @@ Write a structured markdown page with:
 {citations_text}
 
 Write only the page body. No frontmatter. No preamble."""
+
+
+def lint_contradiction_prompt(
+    page_a_title: str,
+    page_a_content: str,
+    page_b_title: str,
+    page_b_content: str,
+) -> str:
+    """Node: check_contradictions — compare two pages for conflicting claims."""
+    return f"""\
+Compare these two wiki pages and identify any direct contradictions between them.
+
+Page A: "{page_a_title}"
+---
+{page_a_content[:1500]}
+---
+
+Page B: "{page_b_title}"
+---
+{page_b_content[:1500]}
+---
+
+A contradiction is when both pages make mutually exclusive factual assertions \
+about the same entity or event — different figures for the same metric, \
+conflicting dates, opposing outcomes. Differences in time period (Q2 vs Q3) \
+are NOT contradictions.
+
+Return only the structured data requested. No commentary."""
+
+
+def lint_stale_claims_prompt(
+    page_title: str,
+    page_content: str,
+    newer_source_content: str,
+    newer_source_title: str,
+) -> str:
+    """Node: check_stale_claims — check if a page's claims are outdated."""
+    return f"""\
+Compare this wiki page against a newer source document and identify any \
+claims in the page that have been superseded or disproven.
+
+Wiki page: "{page_title}"
+---
+{page_content[:1500]}
+---
+
+Newer source: "{newer_source_title}"
+---
+{newer_source_content[:1500]}
+---
+
+A stale claim is a factual assertion in the wiki page that the newer source \
+explicitly contradicts or updates with more recent data. Only flag claims \
+that are materially wrong or outdated — not just ones that could be expanded.
+
+Return only the structured data requested. No commentary."""
+
+
+def lint_suggest_research_prompt(
+    gaps: list[str],
+    orphans: list[str],
+    wiki_name: str,
+) -> str:
+    """Node: suggest_research — generate new questions and source suggestions."""
+    gaps_text = "\n".join(f"- {g}" for g in gaps) or "None identified"
+    orphans_text = "\n".join(f"- {o}" for o in orphans) or "None identified"
+
+    return f"""\
+You are helping maintain a personal wiki called "{wiki_name}".
+
+Knowledge gaps identified (concepts discussed but lacking their own page):
+{gaps_text}
+
+Orphaned topics (pages with no connections to others):
+{orphans_text}
+
+Based on these gaps and orphans, suggest:
+1. New research questions the wiki owner should investigate
+2. Types of sources that would fill the identified gaps
+
+Be specific and actionable. Frame suggestions as questions to explore \
+and source types to look for (e.g. "annual reports", "analyst notes", \
+"regulatory filings").
+
+Return only the structured data requested. No commentary."""

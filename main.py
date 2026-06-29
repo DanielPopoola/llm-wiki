@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
@@ -31,35 +31,27 @@ from wiki.project_config import (
 )
 from wiki.schema import create_wiki, inspect_wiki, list_wikis
 from workflows.ingestion import run_ingestion
+from workflows.lint import run_lint
 from workflows.query import run_query
 
 app = typer.Typer(help="LLM Wiki — personal knowledge base agent.")
 console = Console()
 
 
-# ---------------------------------------------------------------------------
-# Shared dependencies
-# ---------------------------------------------------------------------------
-
-
 def _wikis_dir() -> Path:
     return Path(settings.wikis_dir)
 
 
-def _make_llm() -> ChatGroq:
-    return ChatGroq(
-        model=settings.llm_model,
-        api_key=settings.groq_api_key,
+def _make_llm() -> ChatOpenAI:
+    return ChatOpenAI(
+        base_url=settings.llm_base_url,  # type: ignore
+        api_key=settings.llm_api_key,  # type: ignore
+        model=settings.llm_model,  # type: ignore
     )
 
 
 def _make_db() -> DatabaseConnection:
     return DatabaseConnection.from_settings(settings)
-
-
-# ---------------------------------------------------------------------------
-# Commands
-# ---------------------------------------------------------------------------
 
 
 @app.command()
@@ -216,7 +208,9 @@ def query(
 
     confirm_fn = None
     if save:
-        confirm_fn = lambda q: typer.confirm(q)
+
+        def confirm_fn(q):
+            return typer.confirm(q)
 
     try:
         llm = _make_llm()
@@ -243,6 +237,48 @@ def query(
         raise typer.Exit(1)
     finally:
         db.close()
+
+
+app.command()
+
+
+def lint(
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Override selected project."),
+    auto: bool = typer.Option(False, "--auto", help="Apply all fixes without confirmation."),
+):
+    """Health-check the selected wiki for issues and inconsistencies."""
+    name = project or get_selected_project()
+    db = _make_db()
+
+    try:
+        proj = storage.select_project(db, name)
+        wiki_path = Path(proj.wiki_path)
+    except ValueError as e:
+        console.print(f"❌ {e}", style="red")
+        db.close()
+        raise typer.Exit(1)
+    finally:
+        db.close()
+
+    confirm_fn = None if auto else (lambda q: typer.confirm(q.strip()))
+
+    try:
+        llm = _make_llm()
+        state = run_lint(
+            wiki_path=wiki_path,
+            project=name,
+            llm=llm,
+            auto=auto,
+            confirm_fn=confirm_fn,
+        )
+        critical = sum(1 for f in state.findings if f.severity == "critical")
+        if critical > 0:
+            raise typer.Exit(1)  # exit non-zero when critical issues found
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"❌ Lint failed: {e}", style="red")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

@@ -61,10 +61,10 @@ def check_oracle() -> bool:
     """
     import oracledb
 
-    host     = os.getenv("ORACLE_HOST")
-    port     = int(os.getenv("ORACLE_PORT"))
-    service  = os.getenv("ORACLE_SERVICE")
-    user     = os.getenv("ORACLE_USER")
+    host = os.getenv("ORACLE_HOST")
+    port = int(os.getenv("ORACLE_PORT"))  # type: ignore
+    service = os.getenv("ORACLE_SERVICE")
+    user = os.getenv("ORACLE_USER")
     password = os.getenv("ORACLE_PASSWORD")
 
     dsn = f"{host}:{port}/{service}"
@@ -72,9 +72,7 @@ def check_oracle() -> bool:
     try:
         with oracledb.connect(user=user, password=password, dsn=dsn) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT 'llm-wiki connection ok' AS status FROM dual"
-                )
+                cur.execute("SELECT 'llm-wiki connection ok' AS status FROM dual")
                 row = cur.fetchone()
                 assert row[0] == "llm-wiki connection ok"
 
@@ -106,21 +104,17 @@ def check_embeddings() -> bool:
 
         if len(vector) != EXPECTED_EMBEDDING_DIMENSIONS:
             print(
-                f"❌ Embeddings: expected {EXPECTED_EMBEDDING_DIMENSIONS} dimensions, "
-                f"got {len(vector)}"
+                f"❌ Embeddings: expected {EXPECTED_EMBEDDING_DIMENSIONS} dimensions, \
+                got {len(vector)}"
             )
             return False
 
-        print(
-            f"✅ Embeddings: {model_name} loaded — "
-            f"{len(vector)}-dimensional vector confirmed"
-        )
+        print(f"✅ Embeddings: {model_name} loaded — {len(vector)}-dimensional vector confirmed")
         return True
 
     except Exception as exc:
         print(f"❌ Embeddings: failed to load {model_name} — {exc}")
         return False
-
 
 
 def main() -> None:

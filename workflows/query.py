@@ -28,7 +28,7 @@ from typing import Annotated, Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from wiki import storage
 from wiki.embeddings import build_embed_input, generate_embedding
@@ -50,17 +50,11 @@ class AnswerResult(BaseModel):
     format_used: str  # prose | table | list
 
 
-# ---------------------------------------------------------------------------
-# State — data only, no runtime dependencies
-# ---------------------------------------------------------------------------
-
-
 def _append_history(left: list, right: list) -> list:
     return left + right
 
 
 class QueryState(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     wiki_path: Path
     project: str
     question: str

@@ -1,7 +1,7 @@
 [project]
 name = "llm-wiki"
 version = "0.1.0"
-description = "Add your description here"
+description = "Personal knowledge base agent"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -20,3 +20,17 @@ dependencies = [
     "torch>=2.12.0",
     "typer>=0.26.7",
 ]
+
+[project.scripts]
+llm-wiki = "cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["wiki", "workflows", "cli", "config", "infrastructure"]
