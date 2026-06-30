@@ -145,7 +145,7 @@ Nothing in `wiki/` knows about the CLI or UI.
 
 ## Documentation
 
-- [Technical Design Document](docs/tdd.md) — architecture, decisions, and tradeoffs
+- [Technical Design Document](docs/TDD.md) — architecture, decisions, and tradeoffs
 - [CHANGELOG](CHANGELOG.md) — notable changes per version
 
 ---
