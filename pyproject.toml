@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.112.0",
     "buildpost>=0.1.4",
+    "einops>=0.8.2",
     "langchain>=1.3.9",
     "langchain-community>=0.4.2",
     "langchain-openai>=1.3.3",

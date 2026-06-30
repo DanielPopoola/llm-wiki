@@ -47,11 +47,7 @@ cd llm-wiki
 **2. Start Oracle AI Database**
 
 ```bash
-docker run -d \
-  -p 1521:1521 \
-  -e ORACLE_PWD=your-password \
-  --name llm-wiki-db \
-  container-registry.oracle.com/database/free:latest
+docker compose up -d
 ```
 
 Wait until the container is ready (takes ~2 minutes):
@@ -84,7 +80,6 @@ uv run python scripts/verify.py
 All four checks must pass before proceeding:
 - ✅ Oracle DB: connected
 - ✅ Embedding model: 768-dimensional vector returned
-- ✅ LLM API: valid response received
 - ✅ Environment: no credentials in source code
 
 ---

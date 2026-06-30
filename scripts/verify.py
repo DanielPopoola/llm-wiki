@@ -33,12 +33,6 @@ EXPECTED_EMBEDDING_DIMENSIONS = 768
 
 
 def check_environment() -> bool:
-    """
-    Verify all required environment variables are present.
-
-    Returns True if every key in REQUIRED_ENV_KEYS has a non-empty value,
-    False otherwise.
-    """
     missing = [key for key in REQUIRED_ENV_KEYS if not os.getenv(key)]
 
     if missing:
@@ -51,20 +45,12 @@ def check_environment() -> bool:
 
 
 def check_oracle() -> bool:
-    """
-    Verify Oracle AI Database is reachable and accepts a query.
-
-    Connects using credentials from the environment, creates a test table,
-    inserts a row, reads it back, then drops the table.
-
-    Returns True if all operations succeed, False otherwise.
-    """
     import oracledb
 
-    host = os.getenv("ORACLE_HOST")
-    port = int(os.getenv("ORACLE_PORT"))  # type: ignore
-    service = os.getenv("ORACLE_SERVICE")
-    user = os.getenv("ORACLE_USER")
+    host     = os.getenv("ORACLE_HOST")
+    port     = int(os.getenv("ORACLE_PORT"))
+    service  = os.getenv("ORACLE_SERVICE")
+    user     = os.getenv("ORACLE_USER")
     password = os.getenv("ORACLE_PASSWORD")
 
     dsn = f"{host}:{port}/{service}"
@@ -72,7 +58,9 @@ def check_oracle() -> bool:
     try:
         with oracledb.connect(user=user, password=password, dsn=dsn) as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT 'llm-wiki connection ok' AS status FROM dual")
+                cur.execute(
+                    "SELECT 'llm-wiki connection ok' AS status FROM dual"
+                )
                 row = cur.fetchone()
                 assert row[0] == "llm-wiki connection ok"
 
@@ -86,14 +74,6 @@ def check_oracle() -> bool:
 
 
 def check_embeddings() -> bool:
-    """
-    Verify the embedding model loads and returns a 768-dimensional vector.
-
-    Loads the model specified by EMBED_MODEL, runs a test sentence through
-    it, and confirms the output shape matches EXPECTED_EMBEDDING_DIMENSIONS.
-
-    Returns True if the vector has the expected shape, False otherwise.
-    """
     from sentence_transformers import SentenceTransformer
 
     model_name = os.getenv("EMBED_MODEL")
@@ -104,12 +84,15 @@ def check_embeddings() -> bool:
 
         if len(vector) != EXPECTED_EMBEDDING_DIMENSIONS:
             print(
-                f"❌ Embeddings: expected {EXPECTED_EMBEDDING_DIMENSIONS} dimensions, \
-                got {len(vector)}"
+                f"❌ Embeddings: expected {EXPECTED_EMBEDDING_DIMENSIONS} dimensions, "
+                f"got {len(vector)}"
             )
             return False
 
-        print(f"✅ Embeddings: {model_name} loaded — {len(vector)}-dimensional vector confirmed")
+        print(
+            f"✅ Embeddings: {model_name} loaded — "
+            f"{len(vector)}-dimensional vector confirmed"
+        )
         return True
 
     except Exception as exc:
@@ -117,13 +100,8 @@ def check_embeddings() -> bool:
         return False
 
 
-def main() -> None:
-    """
-    Run all four environment checks and report results.
 
-    Exits 0 only when every check passes. Exits 1 if any check fails,
-    so this can be used as a gate in CI or setup scripts.
-    """
+def main() -> None:
     print("LLM Wiki — Step 0 Environment Verification\n")
 
     results = [
