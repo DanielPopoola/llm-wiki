@@ -75,11 +75,13 @@ required values. Never commit `.env` — it is gitignored.
 
 ```bash
 uv run python scripts/verify.py
+
+uv run python scripts/setup_db.py
 ```
 
 All four checks must pass before proceeding:
 - ✅ Oracle DB: connected
-- ✅ Embedding model: 768-dimensional vector returned
+- ✅ Embedding model: 384-dimensional vector returned
 - ✅ Environment: no credentials in source code
 
 ---

@@ -94,7 +94,7 @@ def test_hybrid_search_uses_db(wiki, entity_page):
             "workflows.query.storage.search_pages", return_value=[search_result]
         ),
         __import__("unittest.mock", fromlist=["patch"]).patch(
-            "workflows.query.generate_embedding", return_value=[0.1] * 768
+            "workflows.query.generate_embedding", return_value=[0.1] * 384
         ),
     ):
         result = run_query(

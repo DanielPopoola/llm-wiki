@@ -38,7 +38,7 @@ DDL_STATEMENTS = [
         tags         VARCHAR2(1000),
         content_hash VARCHAR2(64),
         snippet      VARCHAR2(4000),
-        embedding    VECTOR(768),
+        embedding    VECTOR(384),
         updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (project, page_path)
     )

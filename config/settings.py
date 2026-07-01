@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.groq.com/openai/v1"
 
     # Embedding
-    embedding_model: str = "nomic-ai/nomic-embed-text-v2-moe"
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
 
     # Wiki storage
     wikis_dir: str = "./wikis"

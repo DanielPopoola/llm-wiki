@@ -53,7 +53,7 @@ def upsert_page(
         page_type: One of: entity, topic, summary.
         tags: List of tags from frontmatter.
         snippet: Text that was embedded (title + first 400 tokens).
-        embedding: 768-dimensional vector.
+        embedding: 384-dimensional vector.
 
     Returns:
         True if the page was upserted, False if unchanged (hash match).
@@ -213,7 +213,7 @@ def search_pages(
     Args:
         db: Injected database connection.
         project: Wiki project name (search never crosses project boundaries).
-        query_embedding: 768-dim vector of the query text.
+        query_embedding: 384-dim vector of the query text.
         query_text: Raw query string for full-text search.
         top_k: Maximum number of results to return.
 

@@ -29,14 +29,14 @@ def _load_model():
 
 def generate_embedding(text: str) -> list[float]:
     """
-    Generate a 768-dimensional embedding vector for the given text.
+    Generate a 384-dimensional embedding vector for the given text.
 
     Args:
         text: The text to embed. For wiki pages, pass
               build_embed_input(title, body) rather than raw page content.
 
     Returns:
-        List of 768 floats representing the semantic vector.
+        List of 384 floats representing the semantic vector.
     """
     model = _load_model()
     vector = model.encode(text, convert_to_numpy=True)

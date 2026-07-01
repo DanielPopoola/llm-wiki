@@ -67,7 +67,7 @@ def test_upsert_page_inserts_new_row():
         page_type="entity",
         tags=["banking"],
         snippet="GTBank Nigerian commercial bank",
-        embedding=[0.1] * 768,
+        embedding=[0.1] * 384,
     )
 
     assert result is True
@@ -89,7 +89,7 @@ def test_upsert_page_updates_changed_row():
         page_type="entity",
         tags=["banking"],
         snippet="new content with different hash",  # different from old_snippet
-        embedding=[0.1] * 768,
+        embedding=[0.1] * 384,
     )
 
     assert result is True
@@ -110,7 +110,7 @@ def test_upsert_page_skips_unchanged_row():
         page_type="entity",
         tags=["banking"],
         snippet=snippet,
-        embedding=[0.1] * 768,
+        embedding=[0.1] * 384,
     )
 
     assert result is False
@@ -192,7 +192,7 @@ def test_search_pages_merges_vector_and_fulltext():
     results = search_pages(
         db=db,
         project="ngx",
-        query_embedding=[0.1] * 768,
+        query_embedding=[0.1] * 384,
         query_text="GTBank loan growth",
         top_k=5,
     )
@@ -215,7 +215,7 @@ def test_search_pages_deduplicates_same_page():
     results = search_pages(
         db=db,
         project="ngx",
-        query_embedding=[0.1] * 768,
+        query_embedding=[0.1] * 384,
         query_text="GTBank",
         top_k=5,
     )
@@ -234,7 +234,7 @@ def test_search_pages_respects_project_isolation():
     search_pages(
         db=db,
         project="ngx",
-        query_embedding=[0.1] * 768,
+        query_embedding=[0.1] * 384,
         query_text="GTBank",
     )
 

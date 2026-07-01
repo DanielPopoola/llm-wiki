@@ -85,7 +85,7 @@ writes wiki pages, and indexes those pages. Sources are never modified.
 ┌─────────────────┐   ┌──────────────────────────────┐
 │  Wiki on Disk   │   │      Oracle AI Database       │
 │                 │   │                               │
-│  summaries/     │   │  - Page embeddings (768-dim)  │
+│  summaries/     │   │  - Page embeddings (384-dim)  │
 │  entities/      │   │  - Full-text index            │
 │  topics/        │   │  - Page metadata + hashes     │
 │  raw/           │   │  - Project registry           │
@@ -107,7 +107,7 @@ writes wiki pages, and indexes those pages. Sources are never modified.
 | LangChain | LLM provider abstraction | Swap providers without rewriting workflow logic |
 | qwen/qwen-32b | Generation LLM | Writes wiki pages, extracts entities, synthesises query answers |
 | Claude Sonnet | Eval judge + golden set generation | Separate model family from generator eliminates self-evaluation bias; stronger at structured annotation |
-| nomic-embed-text-v2-moe | Embedding model | Open source, Apache 2.0, runs locally on CPU, 768-dim vectors |
+| nomic-embed-text-v2-moe | Embedding model | Open source, Apache 2.0, runs locally on CPU, 384-dim vectors |
 | Markdown files | Wiki storage format | Human-readable, Obsidian-compatible, git-friendly, agent can write them easily |
 | uv | Python package management | Fast, reproducible, lock-file based |
 
@@ -347,7 +347,7 @@ CREATE TABLE wiki_pages (
     tags         VARCHAR2(1000),
     content_hash VARCHAR2(64),          -- SHA-256; used for change detection
     snippet      VARCHAR2(2000),        -- title + first 400 tokens; what gets embedded
-    embedding    VECTOR(768),           -- nomic-embed-text output
+    embedding    VECTOR(384),           -- nomic-embed-text output
     updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (project, page_path)
 );
