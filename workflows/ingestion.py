@@ -467,6 +467,16 @@ def append_log(state: IngestionState, config: RunnableConfig) -> dict:
     source_name = state.source_path.name
     pages_count = len(state.pages_written)
 
+    db = get_db(config)
+    if db is not None:
+        storage.record_source(
+            db=db,
+            project=state.project,
+            source_path=state.source_path,
+            content_hash=state.source_hash,
+            title=source_name,
+        )
+
     append_log_md(
         log_path=state.wiki_path / "log.md",
         event_type="ingest",

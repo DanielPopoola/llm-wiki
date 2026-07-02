@@ -25,7 +25,7 @@ import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
-from langchain_core.runnables import RunnableConfig, RunnableLambda
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
@@ -136,25 +136,22 @@ def read_candidate_pages(state: QueryState, config: RunnableConfig) -> dict:
 
 
 def synthesise_answer(state: QueryState, config: RunnableConfig) -> dict:
+    """
+    Node 4: Synthesise an answer from candidate pages.
+
+    Structured output guarantees we get citations, gap flag, and format
+    alongside the answer. Conversation history gives follow-up context.
+    """
     llm = get_llm(config)
 
-    prompt_chain = RunnableLambda(
-        lambda x: query_prompt(
-            question=x["question"],
-            page_contents=x["page_contents"],
-            conversation_history=x["history"],
+    result = AnswerResult.model_validate(
+        llm.with_structured_output(AnswerResult).invoke(
+            query_prompt(
+                question=state.question,
+                page_contents=state.candidate_pages,
+                conversation_history=state.history,
+            )
         )
-    )
-
-    chain = prompt_chain | llm.with_structured_output(AnswerResult)
-
-    result = chain.invoke(
-        {
-            "question": state.question,
-            "page_contents": state.candidate_pages,
-            "history": state.history,
-        },
-        config=config,  # THIS is what unlocks full LangSmith tracing
     )
 
     new_history = [
