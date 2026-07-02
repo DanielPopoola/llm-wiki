@@ -10,6 +10,8 @@ from functools import lru_cache
 
 from config import settings
 
+from .utils import traceable
+
 
 @lru_cache(maxsize=1)
 def _load_model():
@@ -27,6 +29,7 @@ def _load_model():
     )
 
 
+@traceable(name="embeddings.generate_embedding")
 def generate_embedding(text: str) -> list[float]:
     """
     Generate a 384-dimensional embedding vector for the given text.

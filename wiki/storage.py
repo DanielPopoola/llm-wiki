@@ -17,7 +17,16 @@ from pathlib import Path
 
 from infrastructure.db import DatabaseConnection
 
-from .utils import normalize_search_query
+from .utils import normalize_search_query, traceable
+
+
+def _redact_embedding(inputs: dict) -> dict:
+    """Replace raw embedding vectors with their length before logging."""
+    redacted = dict(inputs)
+    for key in ("embedding", "query_embedding"):
+        if key in redacted and redacted[key] is not None:
+            redacted[key] = {"dimensions": len(redacted[key])}
+    return redacted
 
 
 @dataclass
@@ -30,6 +39,7 @@ class PageSearchResult:
     score: float
 
 
+@traceable(name="storage.upsert_page", process_inputs=_redact_embedding)
 def upsert_page(
     db: DatabaseConnection,
     project: str,
@@ -130,6 +140,7 @@ def upsert_page(
     return True
 
 
+@traceable(name="storage.source_already_ingested")
 def source_already_ingested(
     db: DatabaseConnection,
     project: str,
@@ -162,6 +173,7 @@ def source_already_ingested(
         return cursor.fetchone() is not None
 
 
+@traceable(name="storage.record_source")
 def record_source(
     db: DatabaseConnection,
     project: str,
@@ -228,6 +240,7 @@ def search_pages(
     return _merge_results(vector_results, fulltext_results, top_k)
 
 
+@traceable(name="storage._vector_search", process_inputs=_redact_embedding)
 def _vector_search(
     db: DatabaseConnection,
     project: str,
@@ -265,6 +278,7 @@ def _vector_search(
         ]
 
 
+@traceable(name="storage._fulltext_search")
 def _fulltext_search(
     db: DatabaseConnection,
     project: str,
@@ -326,6 +340,7 @@ def _merge_results(
     return list(seen.values())[:top_k]
 
 
+@traceable(name="storage.register_project")
 def register_project(
     db: DatabaseConnection,
     name: str,
@@ -352,6 +367,7 @@ def register_project(
         )
 
 
+@traceable(name="storage.update_project_stats")
 def update_project_stats(
     db: DatabaseConnection,
     name: str,
@@ -389,6 +405,7 @@ class ProjectInfo:
     source_count: int
 
 
+@traceable(name="storage.get_project")
 def get_project(db: DatabaseConnection, name: str) -> ProjectInfo | None:
     """
     Fetch a single project's metadata from wiki_projects.
@@ -420,6 +437,7 @@ def get_project(db: DatabaseConnection, name: str) -> ProjectInfo | None:
     )
 
 
+@traceable(name="storage.list_projects")
 def list_projects(db: DatabaseConnection) -> list[ProjectInfo]:
     """
     Return all projects from wiki_projects ordered by creation date.

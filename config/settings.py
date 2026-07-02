@@ -1,6 +1,9 @@
 from functools import lru_cache
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+load_dotenv()  # populate os.environ for LangSmith and other direct env readers
 
 
 class Settings(BaseSettings):
@@ -23,7 +26,8 @@ class Settings(BaseSettings):
 
     langsmith_api_key: str
     langsmith_project: str = "llm-wiki"
-    langsmith_tracing: bool = True
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_tracing: str = "true"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore")
 

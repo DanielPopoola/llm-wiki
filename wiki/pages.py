@@ -15,6 +15,8 @@ from pathlib import Path
 
 import yaml
 
+from .utils import traceable
+
 WIKILINK_PATTERN = re.compile(r"\[\[([^\]]+)\]]\]?")
 
 FRONTMATTER_TEMPLATE = """\
@@ -52,6 +54,7 @@ class WikiPage:
         return WIKILINK_PATTERN.findall(self.body)
 
 
+@traceable(name="pages.read_page")
 def read_page(path: Path) -> WikiPage:
     """
     Parse a wiki page file into frontmatter and body.
@@ -90,6 +93,7 @@ def read_page(path: Path) -> WikiPage:
     return WikiPage(path=path, frontmatter=frontmatter, body=body)
 
 
+@traceable(name="pages.write_page")
 def write_page(path: Path, frontmatter: PageFrontmatter, body: str) -> None:
     """
     Write a wiki page to disk with YAML frontmatter.

@@ -25,10 +25,7 @@ from rich.table import Table
 from config import settings
 from infrastructure.db import DatabaseConnection
 from wiki import storage
-from wiki.project_config import (
-    get_selected_project,
-    set_selected_project,
-)
+from wiki.project_config import get_selected_project, set_selected_project
 from wiki.schema import create_wiki, inspect_wiki, list_wikis
 from workflows.ingestion import run_ingestion
 from workflows.lint import run_lint
