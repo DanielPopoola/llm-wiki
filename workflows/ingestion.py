@@ -55,6 +55,8 @@ from wiki.prompts import (
     update_topic_page_prompt,
 )
 
+from .utils import get_db, get_llm
+
 
 class ExtractionResult(BaseModel):
     entities: list[str]
@@ -121,17 +123,6 @@ def _safe_write(state: IngestionState, path: Path, content_fn) -> dict:
     return {"path": str(path), "is_new": is_new}
 
 
-def _get_llm(config: RunnableConfig) -> Any:
-    llm = config.get("configurable", {}).get("llm")
-    if llm is None:
-        raise ValueError("llm not found in config['configurable']. Pass it via run_ingestion().")
-    return llm
-
-
-def _get_db(config: RunnableConfig) -> Any:
-    return config.get("configurable", {}).get("db")
-
-
 def read_source(state: IngestionState, config: RunnableConfig) -> dict:
     """Node 1: Load the source document from disk and copy it to raw/."""
     text = state.source_path.read_text(encoding="utf-8")
@@ -151,7 +142,7 @@ def hash_source(state: IngestionState, config: RunnableConfig) -> dict:
     JSON cache otherwise.
     """
     digest = hashlib.sha256(state.source_text.encode()).hexdigest()
-    db = _get_db(config)
+    db = get_db(config)
 
     if db is not None:
         already_done = storage.source_already_ingested(db, state.project, digest)
@@ -173,7 +164,7 @@ def extract_entities_and_concepts(state: IngestionState, config: RunnableConfig)
     if state.skip:
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     result = ExtractionResult.model_validate(
         llm.with_structured_output(ExtractionResult).invoke(extraction_prompt(state.source_text))
     )
@@ -190,7 +181,7 @@ def write_summary_page(state: IngestionState, config: RunnableConfig) -> dict:
     if state.skip:
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     source_name = state.source_path.stem
     path = state.wiki_path / "summaries" / f"{source_name}.md"
 
@@ -220,7 +211,7 @@ def update_entity_pages(state: IngestionState, config: RunnableConfig) -> dict:
     if state.skip:
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     written = []
 
     for entity in state.entities:
@@ -265,7 +256,7 @@ def update_topic_pages(state: IngestionState, config: RunnableConfig) -> dict:
     if state.skip:
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     written = []
     source_stem = state.source_path.stem
 
@@ -312,7 +303,7 @@ def flag_contradictions(state: IngestionState, config: RunnableConfig) -> dict:
     if state.skip:
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     written = []
 
     for entity in state.entities:
@@ -397,7 +388,7 @@ def update_index(state: IngestionState, config: RunnableConfig) -> dict:
     if state.skip:
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     index = read_index(state.wiki_path)
     new_entries = []
 
@@ -437,7 +428,7 @@ def embed_changed_pages(state: IngestionState, config: RunnableConfig) -> dict:
     if state.skip:
         return {}
 
-    db = _get_db(config)
+    db = get_db(config)
     if db is None:
         return {}
 

@@ -57,14 +57,26 @@ class Finding:
     fix: Callable | None = None  # callable that applies the fix if accepted
 
 
+class Contradiction(BaseModel):
+    existing_claim: str
+    new_claim: str
+    explanation: str
+
+
 class LintContradictionResult(BaseModel):
     has_contradictions: bool
-    contradictions: list[dict]  # [{existing_claim, conflicting_claim, explanation}]
+    contradictions: list[Contradiction]
+
+
+class StaleClaim(BaseModel):
+    page_claim: str
+    newer_claim: str
+    explanation: str
 
 
 class StaleClaimsResult(BaseModel):
     has_stale_claims: bool
-    stale_claims: list[dict]  # [{page_claim, newer_claim, explanation}]
+    stale_claims: list[StaleClaim]
 
 
 class ResearchSuggestion(BaseModel):
@@ -212,9 +224,9 @@ def check_contradictions(state: LintState, config: RunnableConfig) -> dict:
                             description=(
                                 f"Contradiction between [{page_a['title']}] and [{page_b['title']}] "
                                 f"regarding {entity}:\n"
-                                f"  • {c.get('existing_claim', '')}\n"
-                                f"  • {c.get('conflicting_claim', '')}\n"
-                                f"  Note: {c.get('explanation', '')}"
+                                f"  • {c.existing_claim, ''}\n"
+                                f"  • {c.new_claim, ''}\n"
+                                f"  Note: {c.explanation, ''}"
                             ),
                             pages=[page_a["path"], page_b["path"]],
                             fix_description="Review both pages and reconcile the conflicting claims manually.",
@@ -265,8 +277,8 @@ def check_stale_claims(state: LintState, config: RunnableConfig) -> dict:
                         description=(
                             f"Stale claim in [{entity_page['title']}] "
                             f"superseded by [{summary['title']}]:\n"
-                            f"  • Old: {claim.get('page_claim', '')}\n"
-                            f"  • New: {claim.get('newer_claim', '')}"
+                            f"  • Old: {claim.page_claim, ''}\n"
+                            f"  • New: {claim.newer_claim, ''}"
                         ),
                         pages=[entity_page["path"], summary["path"]],
                         fix_description=f"Update [{entity_page['title']}] with the newer claim.",

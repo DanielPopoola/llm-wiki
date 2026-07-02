@@ -17,6 +17,8 @@ from pathlib import Path
 
 from infrastructure.db import DatabaseConnection
 
+from .utils import normalize_search_query
+
 
 @dataclass
 class PageSearchResult:
@@ -282,7 +284,7 @@ def _fulltext_search(
             FETCH FIRST :top_k ROWS ONLY
             """,
             project=project,
-            query_text=query_text,
+            query_text=normalize_search_query(query_text),
             top_k=top_k,
         )
 

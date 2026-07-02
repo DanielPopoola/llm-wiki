@@ -239,9 +239,7 @@ def query(
         db.close()
 
 
-app.command()
-
-
+@app.command()
 def lint(
     project: Optional[str] = typer.Option(None, "--project", "-p", help="Override selected project."),
     auto: bool = typer.Option(False, "--auto", help="Apply all fixes without confirmation."),

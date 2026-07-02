@@ -38,6 +38,8 @@ from wiki.log import append_log_md
 from wiki.pages import make_frontmatter, read_page, write_page
 from wiki.prompts import query_prompt, save_page_prompt
 
+from .utils import get_db, get_llm
+
 # ---------------------------------------------------------------------------
 # Structured output model
 # ---------------------------------------------------------------------------
@@ -67,17 +69,6 @@ class QueryState(BaseModel):
     history: Annotated[list[dict[str, Any]], _append_history] = Field(default_factory=list)
 
 
-def _get_llm(config: RunnableConfig) -> Any:
-    llm = config.get("configurable", {}).get("llm")
-    if llm is None:
-        raise ValueError("llm not found in config['configurable']. Pass it via run_query().")
-    return llm
-
-
-def _get_db(config: RunnableConfig) -> Any:
-    return config.get("configurable", {}).get("db")
-
-
 def _get_confirm_fn(config: RunnableConfig) -> Any:
     return config.get("configurable", {}).get("confirm_fn") or (lambda _: False)
 
@@ -104,7 +95,7 @@ def hybrid_search(state: QueryState, config: RunnableConfig) -> dict:
     Embeds the question and runs hybrid search against wiki_pages,
     filtered to this project — results never cross wiki boundaries.
     """
-    db = _get_db(config)
+    db = get_db(config)
     if db is None:
         return {}
 
@@ -151,7 +142,7 @@ def synthesise_answer(state: QueryState, config: RunnableConfig) -> dict:
     Structured output guarantees we get citations, gap flag, and format
     alongside the answer. Conversation history gives follow-up context.
     """
-    llm = _get_llm(config)
+    llm = get_llm(config)
 
     result = AnswerResult.model_validate(
         llm.with_structured_output(AnswerResult).invoke(
@@ -191,7 +182,7 @@ def offer_to_save(state: QueryState, config: RunnableConfig) -> dict:
     if not confirm_fn("Save this answer as a wiki page? [y/N] "):
         return {}
 
-    llm = _get_llm(config)
+    llm = get_llm(config)
     response = llm.invoke(
         save_page_prompt(
             question=state.question,
@@ -234,7 +225,7 @@ def offer_to_save(state: QueryState, config: RunnableConfig) -> dict:
     )
 
     # Embed if DB available
-    db = _get_db(config)
+    db = get_db(config)
     if db is not None:
         snippet = build_embed_input(fm.title, response.content)
         embedding = generate_embedding(snippet)
@@ -253,7 +244,7 @@ def offer_to_save(state: QueryState, config: RunnableConfig) -> dict:
 
 
 def choose_retrieval(state: QueryState, config: RunnableConfig) -> str:
-    return "hybrid_search" if _get_db(config) is not None else "read_index"
+    return "hybrid_search" if get_db(config) is not None else "read_index"
 
 
 def build_query_graph() -> StateGraph:
