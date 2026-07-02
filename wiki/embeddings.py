@@ -25,7 +25,7 @@ def _load_model():
 
     return SentenceTransformer(
         settings.embedding_model,
-        trust_remote_code=True,  # required by nomic-embed-text-v2-moe
+        backend="onnx",
     )
 
 

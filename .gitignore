@@ -24,3 +24,5 @@ sources/
 
 .dokugen-backup.md
 .dokugen-cache.json
+
+*.log
