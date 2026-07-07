@@ -1,0 +1,1 @@
+CONTENT_WIDTH = "900px"

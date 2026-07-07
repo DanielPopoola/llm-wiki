@@ -1,3 +1,8 @@
+.web
+*.db
+assets/external/
+.states
+*.py[cod]
 # environment
 .env
 .venv/
@@ -26,3 +31,8 @@ sources/
 .dokugen-cache.json
 
 *.log
+
+AGENTS.md
+CLAUDE.md
+package.json
+bun.lock
