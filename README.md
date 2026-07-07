@@ -28,7 +28,7 @@ Let's get you set up to run this locally.
 
     ```bash
     pip install --upgrade pip
-    pip install -e .
+    pip install -e ".[ui]" # Installs core dependencies and the Reflex UI components
     ```
 
 4.  **Configure Environment Variables:**
@@ -81,44 +81,8 @@ Let's get you set up to run this locally.
 
     An example `CREATE TABLE` statement for `wiki_pages` (you'll need similar for `wiki_sources` and `wiki_projects`):
 
-    ```sql
-    CREATE TABLE wiki_pages (
-        project VARCHAR2(255) NOT NULL,
-        page_path VARCHAR2(1000) NOT NULL,
-        title VARCHAR2(500),
-        page_type VARCHAR2(50),
-        tags CLOB, -- Stored as JSON string
-        content_hash VARCHAR2(64),
-        snippet CLOB,
-        embedding VECTOR(384, FLOAT32), -- Oracle 23ai vector type
-        updated_at TIMESTAMP WITH TIME ZONE,
-        PRIMARY KEY (project, page_path)
-    );
-
-    -- Add a full-text index for snippet search
-    CREATE INDEX wiki_pages_snippet_idx ON wiki_pages (snippet) INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS ('SYNC (ON COMMIT)');
-
-    -- Add a vector index for similarity search
-    CREATE VECTOR INDEX wiki_pages_embedding_vidx ON wiki_pages (embedding) ORGANIZATION NEIGHBORHOOD GRAPH DISTANCE COSINE;
-
-    CREATE TABLE wiki_sources (
-        project VARCHAR2(255) NOT NULL,
-        source_path VARCHAR2(1000) NOT NULL,
-        content_hash VARCHAR2(64) NOT NULL,
-        title VARCHAR2(500),
-        ingested_at TIMESTAMP WITH TIME ZONE,
-        status VARCHAR2(50),
-        PRIMARY KEY (project, source_path)
-    );
-
-    CREATE TABLE wiki_projects (
-        name VARCHAR2(255) NOT NULL PRIMARY KEY,
-        wiki_path VARCHAR2(1000) NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE,
-        last_ingested TIMESTAMP WITH TIME ZONE,
-        page_count NUMBER DEFAULT 0,
-        source_count NUMBER DEFAULT 0
-    );
+    ```bash
+    uv run scripts/setup_db.py
     ```
 
 ## Usage
@@ -185,6 +149,22 @@ Once installed, you can interact with your LLM Wiki using the `llm-wiki` command
     llm-wiki lint
     # Apply fixes automatically
     llm-wiki lint --auto
+    ```
+
+8.  **Evaluate Wiki Performance:**
+
+    Run an evaluation workflow to test the accuracy and completeness of your wiki's answers against a set of predefined questions and expected answers.
+
+    ```bash
+    llm-wiki eval path/to/evals.jsonl
+    ```
+
+9.  **Launch the Web UI:**
+
+    Start the interactive web interface to chat with your wiki.
+
+    ```bash
+    uv run reflex run
     ```
 
 ## Features
@@ -317,16 +297,49 @@ Here's what you can do with your LLM Wiki:
       CLI-->>User: Lint complete message
     ```
 
+-   **Wiki Evaluation and Benchmarking:** This feature allows you to systematically test the performance of your wiki in answering questions or performing tasks. Provide a dataset of questions and expected answers (a `jsonl` file), and the evaluation workflow will query the wiki, generate answers, and then use a "Judge LLM" to score the wiki's responses against the ground truth. This helps track improvements and regressions over time.
+
+    ```mermaid
+    sequenceDiagram
+      actor User
+      participant CLI
+      participant EvalWorkflow
+      participant EvalDataset as "Evaluation Dataset (jsonl)"
+      participant QueryWorkflow
+      participant LLMProvider as "LLM (Generator)"
+      participant JudgeLLM as "LLM (Judge)"
+
+      User->>CLI: llm-wiki eval dataset.jsonl
+      CLI->>EvalWorkflow: run_evaluation(dataset.jsonl)
+      loop For each question in dataset
+        EvalWorkflow->>EvalDataset: Read question & expected answer
+        EvalWorkflow->>QueryWorkflow: Query wiki with question
+        QueryWorkflow->>LLMProvider: Generate answer (via semantic search)
+        LLMProvider-->>QueryWorkflow: Wiki Answer
+        QueryWorkflow-->>EvalWorkflow: Wiki Answer & Citations
+        EvalWorkflow->>JudgeLLM: Score Wiki Answer vs. Expected Answer
+        JudgeLLM-->>EvalWorkflow: Evaluation Score
+        EvalWorkflow->>EvalWorkflow: Aggregate results
+      end
+      EvalWorkflow-->>CLI: Evaluation Summary
+      CLI-->>User: Display evaluation report
+    ```
+
+-   **Interactive Web UI:** Beyond the command-line interface, LLM Wiki now includes a web-based user interface, built with Reflex. This UI provides a chat-like experience where you can interact with your wiki, ask questions, and receive answers in a more dynamic and user-friendly environment. It leverages the same powerful backend workflows for querying and interaction.
+
 ## System Architecture / Design
 
-The LLM Wiki is structured around a CLI interface that orchestrates various `workflows` using a LangGraph state machine. It interacts with your local `wiki` files (Markdown documents), a local embedding model (powered by PyTorch), and an Oracle Database for persistent storage of page metadata, embeddings, and project information. All heavy lifting for content understanding and generation is delegated to an external Large Language Model provider.
+The LLM Wiki is structured around a CLI interface and an optional web UI that orchestrate various `workflows` using a LangGraph state machine. It interacts with your local `wiki` files (Markdown documents), a local embedding model (powered by PyTorch), and an Oracle Database for persistent storage of page metadata, embeddings, and project information. All heavy lifting for content understanding and generation is delegated to an external Large Language Model provider.
 
 ```mermaid
 flowchart LR
     User[("User (CLI)")] -->|Commands| CLI(cli/main.py)
+    User -->|Web Interface| ReflexUI["Reflex Web UI (Frontend)"]
+    ReflexUI --> ReflexBackend["Reflex Backend (Python)"]
 
     subgraph Core Components
-        CLI --> Workflows["Workflows (Ingestion, Query, Lint)"]
+        CLI --> Workflows["Workflows (Ingestion, Query, Lint, Eval)"]
+        ReflexBackend --> Workflows
         Workflows --> WikiCore["Wiki Core (Pages, Index, Schema, Embeddings)"]
         WikiCore --> Filesystem[("Wiki Filesystem (.md pages, index.md, log.ndjson)")]
     end
@@ -348,6 +361,8 @@ flowchart LR
     style OracleDB fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
     style LLMProvider fill:#ffe0b2,stroke:#ff8f00,stroke-width:2px
     style EmbeddingsModel fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+    style ReflexUI fill:#e6e6fa,stroke:#6a5acd,stroke-width:2px
+    style ReflexBackend fill:#e6e6fa,stroke:#6a5acd,stroke-width:2px
 ```
 
 ## Technologies Used
@@ -356,11 +371,16 @@ flowchart LR
 | :--------------- | :------------------------- | :--------------------------------------------- |
 | **Language**     | Python                     | The core programming language for the project. |
 | **CLI Framework**| Typer                      | Intuitive command-line interface creation.     |
+| **Web UI**       | Reflex                     | Framework for building the interactive web user interface. |
 | **LLM Orchestration** | LangChain / LangGraph  | Frameworks for building LLM-powered applications and stateful agent workflows. |
 | **Database**     | Oracle Database (`oracledb`)| Persistent storage for wiki metadata, embeddings, and project information. Includes vector search capabilities. |
 | **Embeddings**   | Sentence Transformers      | Python library for state-of-the-art sentence, paragraph, and image embeddings. |
 | **ML Framework** | PyTorch                    | Powering the local embedding model inference.  |
 | **LLM Providers**| OpenAI, Anthropic, Ollama  | Configurable LLM backends for text generation and structured extraction. |
+| **Document Processing**| Unstructured, BeautifulSoup | Libraries for parsing and extracting text from various document types (PDFs, HTML, etc.). |
+| **Text Utilities**| Tiktoken, FuzzyWuzzy, Python-Levenshtein | For tokenization, fuzzy string matching, and calculating Levenshtein distance. |
+| **Local Vector DB**| ChromaDB                   | Used for local testing and development of vector search functionalities. |
+| **Logging**      | Loguru                     | Provides flexible and powerful logging capabilities. |
 | **Testing**      | Pytest                     | Robust framework for writing and running tests. |
 | **CLI Styling**  | Rich                       | For beautiful terminal output.                 |
 | **Configuration**| Python-dotenv, PyYAML      | Managing environment variables and YAML frontmatter. |
