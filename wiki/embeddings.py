@@ -1,18 +1,18 @@
+import os
 from functools import lru_cache
 
 from config import settings
 
 from .utils import traceable
 
+local_model_path = os.path.expanduser(settings.model_path)
+
 
 @lru_cache(maxsize=1)
 def _load_model():
     from sentence_transformers import SentenceTransformer
 
-    return SentenceTransformer(
-        settings.embedding_model,
-        backend="onnx",
-    )
+    return SentenceTransformer(local_model_path, backend="onnx", model_kwargs={"file_name": "onnx/model.onnx"})
 
 
 @traceable(name="embeddings.generate_embedding")

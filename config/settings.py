@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # Embedding
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    model_path: str = "path_to_model"
 
     # Wiki storage
     wikis_dir: str = "./wikis"
