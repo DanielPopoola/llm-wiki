@@ -19,12 +19,6 @@ _CONFIG_FILE = _CONFIG_DIR / "config.json"
 
 
 def get_selected_project() -> str:
-    """
-    Return the currently selected project name.
-
-    Raises:
-        SystemExit: With a clear message if no project has been selected.
-    """
     if not _CONFIG_FILE.exists():
         _fail_no_project()
 
@@ -38,12 +32,6 @@ def get_selected_project() -> str:
 
 
 def set_selected_project(name: str) -> None:
-    """
-    Persist the selected project name to local config.
-
-    Args:
-        name: Wiki project name to select.
-    """
     _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     existing = {}
@@ -55,7 +43,6 @@ def set_selected_project(name: str) -> None:
 
 
 def clear_selected_project() -> None:
-    """Clear the selected project (used when a project is deleted)."""
     if not _CONFIG_FILE.exists():
         return
 

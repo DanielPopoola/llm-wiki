@@ -1,8 +1,3 @@
-"""
-All LLM prompts for the wiki agent.
-"""
-
-
 def extraction_prompt(source_text: str) -> str:
     """Node: extract_entities_and_concepts"""
     return f"""\

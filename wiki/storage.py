@@ -182,17 +182,6 @@ def record_source(
     title: str,
     status: str = "completed",
 ) -> None:
-    """
-    Record a source document in wiki_sources after ingestion.
-
-    Args:
-        db: Injected database connection.
-        project: Wiki project name.
-        source_path: Path to the original source file.
-        content_hash: SHA-256 hash of the source content.
-        title: Inferred title for the source.
-        status: One of: completed, failed, rolled_back.
-    """
     with db.cursor() as cursor:
         cursor.execute(
             """
@@ -247,7 +236,6 @@ def _vector_search(
     query_embedding: list[float],
     top_k: int,
 ) -> list[PageSearchResult]:
-    """Cosine similarity search using the vector index."""
     with db.cursor() as cursor:
         embedding_var = array.array("f", query_embedding)
 
@@ -285,7 +273,6 @@ def _fulltext_search(
     query_text: str,
     top_k: int,
 ) -> list[PageSearchResult]:
-    """Oracle Text full-text search using the CONTEXT index."""
     with db.cursor() as cursor:
         cursor.execute(
             """
@@ -320,12 +307,6 @@ def _merge_results(
     fulltext_results: list[PageSearchResult],
     top_k: int,
 ) -> list[PageSearchResult]:
-    """
-    Merge vector and full-text results by path, deduplicating.
-
-    Pages appearing in both lists are ranked higher — they matched
-    both semantic meaning and exact terms.
-    """
     seen: dict[str, PageSearchResult] = {}
 
     # Full-text results first — exact matches are high-confidence
@@ -346,11 +327,6 @@ def register_project(
     name: str,
     wiki_path: Path,
 ) -> None:
-    """
-    Insert a project into wiki_projects if it doesn't already exist.
-
-    Called when a new wiki is created via `llm-wiki new`.
-    """
     with db.cursor() as cursor:
         cursor.execute(
             """
@@ -374,7 +350,6 @@ def update_project_stats(
     page_count: int,
     source_count_delta: int = 1,
 ) -> None:
-    """Update page count and last ingestion timestamp for a project."""
     with db.cursor() as cursor:
         cursor.execute(
             """
@@ -407,11 +382,6 @@ class ProjectInfo:
 
 @traceable(name="storage.get_project")
 def get_project(db: DatabaseConnection, name: str) -> ProjectInfo | None:
-    """
-    Fetch a single project's metadata from wiki_projects.
-
-    Returns None if the project doesn't exist — callers decide how to handle.
-    """
     with db.cursor() as cursor:
         cursor.execute(
             """
@@ -439,11 +409,6 @@ def get_project(db: DatabaseConnection, name: str) -> ProjectInfo | None:
 
 @traceable(name="storage.list_projects")
 def list_projects(db: DatabaseConnection) -> list[ProjectInfo]:
-    """
-    Return all projects from wiki_projects ordered by creation date.
-
-    Used by `llm-wiki list` to show project metadata alongside disk info.
-    """
     with db.cursor() as cursor:
         cursor.execute(
             """
@@ -469,15 +434,6 @@ def list_projects(db: DatabaseConnection) -> list[ProjectInfo]:
 
 
 def select_project(db: DatabaseConnection, name: str) -> ProjectInfo:
-    """
-    Validate a project exists in Oracle before any operation.
-
-    Called internally by CLI commands after reading the selected project
-    from local config. Fails fast with a clear error if not found.
-
-    Raises:
-        ValueError: If the project doesn't exist in wiki_projects.
-    """
     project = get_project(db, name)
     if project is None:
         raise ValueError(f"Project '{name}' not found in database.\nRun: llm-wiki new {name}")

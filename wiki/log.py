@@ -34,12 +34,6 @@ def _append_ndjson(log_path: Path, event: dict) -> None:
 
 
 def log_started(log_path: Path, thread_id: str, source: str) -> None:
-    """
-    Record that an ingestion has begun.
-
-    Called from run_ingestion() before the graph runs — ensures the WAL
-    has a started event even if the process crashes before any node runs.
-    """
     _append_ndjson(
         log_path,
         {
@@ -53,12 +47,6 @@ def log_started(log_path: Path, thread_id: str, source: str) -> None:
 
 
 def log_backup(log_path: Path, thread_id: str, page_path: Path, old_content: str) -> None:
-    """
-    Record the old content of a page BEFORE modifying it.
-
-    Must be called before any write to an existing page so rollback
-    can restore the previous state.
-    """
     _append_ndjson(
         log_path,
         {
@@ -73,7 +61,6 @@ def log_backup(log_path: Path, thread_id: str, page_path: Path, old_content: str
 
 
 def log_wrote(log_path: Path, thread_id: str, page_path: Path, is_new: bool) -> None:
-    """Record that a page was written to disk."""
     _append_ndjson(
         log_path,
         {
@@ -88,9 +75,6 @@ def log_wrote(log_path: Path, thread_id: str, page_path: Path, is_new: bool) -> 
 
 
 def log_completed(log_path: Path, thread_id: str, source: str, pages_written: int) -> None:
-    """
-    Record that an ingestion completed successfully.
-    """
     _append_ndjson(
         log_path,
         {
@@ -105,7 +89,6 @@ def log_completed(log_path: Path, thread_id: str, source: str, pages_written: in
 
 
 def log_rolled_back(log_path: Path, thread_id: str, source: str) -> None:
-    """Record that a failed ingestion was rolled back."""
     _append_ndjson(
         log_path,
         {
@@ -119,9 +102,6 @@ def log_rolled_back(log_path: Path, thread_id: str, source: str) -> None:
 
 
 def append_log_md(log_path: Path, event_type: str, description: str) -> None:
-    """
-    Append a human-readable entry to log.md.
-    """
     today = date.today().isoformat()
     entry = f"\n## [{today}] {event_type} | {description}"
 
@@ -130,11 +110,6 @@ def append_log_md(log_path: Path, event_type: str, description: str) -> None:
 
 
 def find_incomplete_ingestions(log_path: Path) -> list[str]:
-    """
-    Scan log.ndjson for ingestions that have file writes but no completed event.
-
-    Returns thread_ids that need rollback.
-    """
     if not log_path.exists():
         return []
 
@@ -148,12 +123,6 @@ def find_incomplete_ingestions(log_path: Path) -> list[str]:
 
 
 def rollback_ingestion(log_path: Path, thread_id: str) -> None:
-    """
-    Restore filesystem to pre-ingestion state for a failed thread.
-
-    - Modified pages: restored from their backup event's old_content
-    - New pages: deleted (they didn't exist before ingestion)
-    """
     events = [
         json.loads(line)
         for line in log_path.read_text().splitlines()

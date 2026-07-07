@@ -1,21 +1,5 @@
-"""
-Oracle database connection management.
-
-This is the infrastructure layer — it knows about the Oracle driver
-and connection pooling. Nothing else in the codebase imports oracledb.
-
-Usage:
-    from infrastructure.db import DatabaseConnection
-    from config import settings
-
-    db = DatabaseConnection.from_settings(settings)
-
-    with db.cursor() as cursor:
-        cursor.execute("SELECT 1 FROM DUAL")
-"""
-
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 import oracledb
 

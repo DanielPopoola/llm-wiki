@@ -103,12 +103,6 @@ def _slugify(text: str) -> str:
 
 
 def _safe_write(state: IngestionState, path: Path, content_fn) -> dict:
-    """
-    Write a page to disk with WAL bookkeeping.
-
-    Logs a backup event before modifying an existing page so rollback
-    can restore it. Logs a wrote event after every write.
-    """
     log = _log_path(state.wiki_path)
     is_new = not path.exists()
 

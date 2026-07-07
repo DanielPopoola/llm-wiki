@@ -90,22 +90,6 @@ class WikiSchema:
 
 
 def create_wiki(name: str, wikis_dir: Path) -> WikiSchema:
-    """
-    Scaffold a new wiki project on disk.
-
-    Creates the directory structure, SCHEMA.md, index.md, log.md,
-    and an empty log.ndjson for crash recovery.
-
-    Args:
-        name: The wiki project name (used as directory name).
-        wikis_dir: Parent directory where all wikis live.
-
-    Returns:
-        WikiSchema for the newly created wiki.
-
-    Raises:
-        FileExistsError: If a wiki with this name already exists.
-    """
     wiki_path = wikis_dir / name
 
     if wiki_path.exists():
@@ -125,17 +109,6 @@ def create_wiki(name: str, wikis_dir: Path) -> WikiSchema:
 
 
 def list_wikis(wikis_dir: Path) -> list[WikiSchema]:
-    """
-    Return all valid wiki projects found in wikis_dir.
-
-    A directory is a valid wiki if it contains SCHEMA.md.
-
-    Args:
-        wikis_dir: Parent directory where all wikis live.
-
-    Returns:
-        List of WikiSchema objects, one per valid wiki found.
-    """
     if not wikis_dir.exists():
         return []
 
@@ -147,19 +120,6 @@ def list_wikis(wikis_dir: Path) -> list[WikiSchema]:
 
 
 def inspect_wiki(name: str, wikis_dir: Path) -> WikiSchema:
-    """
-    Load a WikiSchema for an existing wiki.
-
-    Args:
-        name: The wiki project name.
-        wikis_dir: Parent directory where all wikis live.
-
-    Returns:
-        WikiSchema with page counts populated.
-
-    Raises:
-        FileNotFoundError: If no valid wiki with this name exists.
-    """
     wiki = WikiSchema(name=name, path=wikis_dir / name)
 
     if not wiki.is_valid:

@@ -1,24 +1,6 @@
-"""
-Oracle DB schema setup.
-
-Run once before first use:
-    uv run python scripts/setup_db.py
-
-
-Tables:
-    wiki_pages    — page embeddings and metadata
-    wiki_projects — project registry
-    wiki_sources  — source ingestion history and duplicate detection
-
-Indexes:
-    idx_wiki_embedding — vector index, cosine distance
-    idx_wiki_fulltext  — Oracle Text full-text index on title + snippet
-"""
-
 import sys
 from pathlib import Path
 
-# Add project root to path so imports work when run as a script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings

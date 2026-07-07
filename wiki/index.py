@@ -58,12 +58,6 @@ class WikiIndex:
 
 
 def read_index(wiki_path: Path) -> WikiIndex:
-    """
-    Parse index.md into a WikiIndex.
-
-    Unknown or malformed lines are silently skipped — the index is
-    rebuilt from disk on every ingestion so stale lines self-correct.
-    """
     index = WikiIndex(wiki_path=wiki_path)
     index_path = wiki_path / "index.md"
 
@@ -102,12 +96,6 @@ def read_index(wiki_path: Path) -> WikiIndex:
 
 
 def write_index(index: WikiIndex) -> None:
-    """
-    Serialise a WikiIndex back to index.md.
-
-    Reconciles against disk first — entries whose page_path no longer
-    exists are dropped. This handles manually deleted pages automatically.
-    """
     # Drop stale entries (page deleted from disk)
     live_entries = [e for e in index.entries if e.page_path.exists()]
 
@@ -123,12 +111,6 @@ def write_index(index: WikiIndex) -> None:
 
 
 def upsert_entries(index: WikiIndex, new_entries: list[IndexEntry]) -> WikiIndex:
-    """
-    Add or update entries in the index.
-
-    If an entry with the same title already exists, its description
-    is updated. Otherwise the entry is appended.
-    """
     existing_by_title = {e.title: i for i, e in enumerate(index.entries)}
 
     for new_entry in new_entries:
