@@ -67,7 +67,7 @@ def empty_state() -> rx.Component:
         rx.flex(
             _prompt_card("network", "OVERVIEW", "What are the key entities and how do they connect?"),
             _prompt_card("git-compare", "COMPARE", "What's the difference between the top two topics here?"),
-            _prompt_card("alert-triangle", "GAPS", "What contradictions or gaps has this wiki flagged?"),
+            _prompt_card("triangle-alert", "GAPS", "What contradictions or gaps has this wiki flagged?"),
             spacing="4",
             flex_wrap="wrap",
             justify="center",

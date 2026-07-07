@@ -26,3 +26,7 @@ def build_embed_input(title: str, body: str, max_tokens: int = 400) -> str:
     words = body.split()
     truncated_body = " ".join(words[:max_tokens])
     return f"{title}\n\n{truncated_body}"
+
+
+def preload_model() -> None:
+    _load_model()
